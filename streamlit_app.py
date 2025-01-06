@@ -5,10 +5,13 @@ from email.mime.text import MIMEText
 import os
 import datetime
 
+# Access secrets
+EMAIL = st.secrets["smtp"]["user"]
+PASSWORD = st.secrets["smtp"]["pass"]
+
 # Configuration
 UPLOAD_FOLDER = 'uploads'
 LOG_FILE = 'logs.txt'
-EMAIL = 'your-email@example.com'
 
 # Create necessary folders
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
