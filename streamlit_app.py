@@ -16,7 +16,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # UI for file upload
 st.title("OCIOCheck Remote Runner")
 st.header("Upload your ocio.config file")
-uploaded_file = st.file_uploader("Choose a file", type="config")
+uploaded_file = st.file_uploader("Choose a file", type="ocio")
 
 if uploaded_file:
     file_path = os.path.join(UPLOAD_FOLDER, uploaded_file.name)
