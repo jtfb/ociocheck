@@ -1,13 +1,7 @@
 import streamlit as st
 import subprocess
-import smtplib
-from email.mime.text import MIMEText
 import os
 import datetime
-
-# Access secrets
-EMAIL = st.secrets["smtp"]["user"]
-PASSWORD = st.secrets["smtp"]["pass"]
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -44,17 +38,6 @@ if uploaded_file:
         else:
             st.error("OCIOCheck failed!")
             st.text(result.stderr)
-
-            # Send email notification
-            msg = MIMEText(result.stderr)
-            msg['Subject'] = 'OCIOCheck Failure Notification'
-            msg['From'] = EMAIL
-            msg['To'] = EMAIL
-
-            # Note: Configure your SMTP server settings here
-            with smtplib.SMTP('smtp.example.com', 587) as server:
-                server.login('user', 'password')
-                server.sendmail(EMAIL, [EMAIL], msg.as_string())
         
     except Exception as e:
         st.error(f"An error occurred: {e}")
