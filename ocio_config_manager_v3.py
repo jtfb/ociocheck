@@ -100,7 +100,7 @@ class OCIOConfigManager(QMainWindow):
         self.output_colorspace_combo.addItems(self.colorspaces)
 
         self.lut_format_combo = QComboBox()
-        self.lut_format_combo.addItems(["flame", "3dl", "cube", "spi1d", "csp"])
+        self.lut_format_combo.addItems(["flame", "3dl", "cube", "spi1d", "cinespace"])
 
         bake_lut_btn = QPushButton("Bake LUT")
         bake_lut_btn.clicked.connect(self.bake_lut)
@@ -156,58 +156,61 @@ class OCIOConfigManager(QMainWindow):
             QMessageBox.warning(self, "Input Error", "Please select both input and output colorspaces.")
             return
 
-        if lut_format not in ["flame", "3dl", "cube", "spi1d", "csp", "houdini"]:
+        if lut_format not in ["flame", "3dl", "cube", "spi1d", "houdini", "cinespace"]:
             QMessageBox.warning(self, "LUT Format Error", "Invalid LUT format selected.")
             return
 
+        lut_format_suffix = lut_format
+        if lut_format == "cinespace":
+            lut_format_suffix = "csp"
+        else:
+            lut_format_suffix = lut_format
+        
         try:
-            # Path to ociobakelut executable
-            ocio_bakelut_path = "C:/Users/TIAGOFOA/AppData/Local/Programs/Python/Python311/Scripts/ociobakelut.exe"
+            # Fetch the OCIO config path dynamically from the uploaded config
+            if not self.current_config_path:
+                QMessageBox.warning(self, "OCIO Config Error", "No OCIO Config file loaded.")
+                return
             
+            ocio_config_path = self.current_config_path
+
             # Open save file dialog with default extension based on LUT format
-            output_file, _ = QFileDialog.getSaveFileName(self, "Save LUT File", "", f"{lut_format.upper()} Files (*.{lut_format})")
-            
+            output_file, _ = QFileDialog.getSaveFileName(self, "Save LUT File", "", f"{lut_format.upper()} Files (*.{lut_format_suffix})")
+
             if output_file:
-                # Check if the user has selected a valid path
-                if not os.path.exists(os.path.dirname(output_file)):
-                    os.makedirs(os.path.dirname(output_file))
+                # Normalize file paths to handle backslashes and forward slashes
+                output_file = os.path.normpath(output_file)
 
-                # Ensure the file extension is added if not present
-                if not output_file.lower().endswith(f".{lut_format.lower()}"):
-                    output_file += f".{lut_format}"
-
-                # Verify if the file exists and prompt the user
-                if os.path.exists(output_file):
-                    confirm = QMessageBox.question(self, "File Exists", f"File already exists: {output_file}. Do you want to overwrite?",
-                                                QMessageBox.Yes | QMessageBox.No)
-                    if confirm == QMessageBox.No:
-                        return  # If the user chooses No, we don't proceed.
-
-                # Construct the ociobakelut command
+                # Define the command arguments
                 command_args = [
-                    ocio_bakelut_path,
+                    "ociobakelut", 
+                    "--iconfig", ocio_config_path, 
+                    "--inputspace", input_colorspace, 
+                    "--outputspace", output_colorspace, 
+                    "--shapersize", "4096", 
                     "--format", lut_format,
-                    "--inputspace", input_colorspace,
-                    "--outputspace", output_colorspace,
-                    "--output", output_file
+                    output_file
                 ]
 
-                print(f"Command being executed: {command_args}")  # Debugging: Log the command
-                print(f"Saving LUT to: {output_file}")  # Debugging: Log the file path
+                print(f"Running command: {' '.join(command_args)}")  # Log the full command for debugging
 
-                # Run the subprocess to generate the LUT
-                result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                # Run the command using subprocess
+                result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-                output = result.stdout.decode() + "\n" + result.stderr.decode()
+                # Output from the command
+                output = result.stdout + "\n" + result.stderr
+
+                print(f"Command output:\n{output}")  # Print command output for debugging
+
                 if result.returncode == 0:
                     QMessageBox.information(self, "LUT Baking Success", f"LUT saved to: {output_file}")
                 else:
+                    # Show the error message in the dialog box
                     QMessageBox.warning(self, "LUT Baking Error", f"Error: {output}")
 
         except Exception as e:
+            # Show the exception message in the dialog box
             QMessageBox.warning(self, "Error", f"Failed to bake LUT: {str(e)}")
-
-
 
 
     def validate_ocio_config(self):
