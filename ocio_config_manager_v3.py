@@ -27,6 +27,7 @@ class OCIOConfigManager(QMainWindow):
         self.tabs.addTab(self.create_clf_builder_tab(), "CLF Builder")
         self.tabs.addTab(self.create_lut_builder_tab(), "LUT Builder")
         self.tabs.addTab(self.create_ocio_bake_lut_tab(), "OCIO Bake LUT")
+        self.tabs.addTab(self.create_ocio_tweak_tab(), "OCIO Tweak")  # New OCIO Tweak tab
 
         self.current_config_path = None  # To store the current config path
 
@@ -116,6 +117,23 @@ class OCIOConfigManager(QMainWindow):
         tab.setLayout(layout)
         return tab
 
+    def create_ocio_tweak_tab(self):
+        """Create the OCIO Tweak tab displaying environments, displays, roles, colorspaces, and looks."""
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        self.ocio_info_display = QTextEdit()
+        self.ocio_info_display.setReadOnly(True)
+
+        refresh_btn = QPushButton("Refresh OCIO Info")
+        refresh_btn.clicked.connect(self.refresh_ocio_info)
+
+        layout.addWidget(refresh_btn)
+        layout.addWidget(self.ocio_info_display)
+
+        tab.setLayout(layout)
+        return tab
+
     def upload_ocio_config(self):
         """Uploads an OCIO configuration file."""
         file_path, _ = QFileDialog.getOpenFileName(self, "Open OCIO Config", "", "OCIO Config Files (*.ocio)")
@@ -145,6 +163,52 @@ class OCIOConfigManager(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load colorspaces: {str(e)}")
 
+    def refresh_ocio_info(self):
+        """Refresh and display the OCIO info including environments, displays, roles, colorspaces, and looks."""
+        if not self.current_config_path:
+            QMessageBox.warning(self, "OCIO Config Error", "No OCIO Config file loaded.")
+            return
+
+        try:
+            # Load the OCIO config using PyOCIO
+            config = OCIO.Config.CreateFromFile(self.current_config_path)
+
+            # Get environments, displays, roles, colorspaces, and looks
+            info = ""
+
+            # Environments
+            info += "Environments:\n"
+            environments = config.getEnvironment()  # Assuming `getEnvironment()` exists or handle accordingly
+            for env in environments:
+                info += f"- {env}\n"
+            
+            # Displays
+            info += "\nDisplays:\n"
+            displays = config.getDisplays()
+            for display in displays:
+                info += f"- {display}\n"
+            
+            # Roles
+            info += "\nRoles:\n"
+            roles = config.getRoles()
+            for role in roles:
+                info += f"- {role}\n"
+            
+            # Colorspaces
+            info += "\nColorspaces:\n"
+            colorspaces = config.getColorSpaces()
+            for cs in colorspaces:
+                info += f"- {cs.getName()}\n"
+
+            # Looks
+            info += "\nLooks:\n"
+            looks = config.getLooks()
+            for look in looks:
+                info += f"- {look.getName()}\n"
+
+            self.ocio_info_display.setText(info)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to retrieve OCIO info: {str(e)}")
 
     def bake_lut(self):
         """Bake the LUT using ociobakelut."""
@@ -211,7 +275,6 @@ class OCIOConfigManager(QMainWindow):
         except Exception as e:
             # Show the exception message in the dialog box
             QMessageBox.warning(self, "Error", f"Failed to bake LUT: {str(e)}")
-
 
     def validate_ocio_config(self):
         """Validates the uploaded OCIO configuration using ociocheck."""
